@@ -22,6 +22,7 @@ namespace ChatServer
         Socket ClientSocket = null;
         Dictionary<string, Socket> connected = new Dictionary<string, Socket>();
         Dictionary<string, string> connectednickname = new Dictionary<string, string>();
+        Dictionary<string, string> connecteds = new Dictionary<string, string>();
         private bool inited = false;
         public Mainwindow()
         {
@@ -109,7 +110,17 @@ namespace ChatServer
             MessageBox.Show((String)obj);
         }
 
-
+        public void sendmessage(Socket socket, string message)
+        {
+            try
+            {
+                socket.Send(Encoding.Unicode.GetBytes(message));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
 
         private void closeconnect(Object socketforclient)
         {
@@ -151,9 +162,10 @@ namespace ChatServer
                             {
                                 break;
                             }
+                            string nickname = null;
                             maintextbox.Invoke(new EventHandler(delegate
                             {
-                                string nickname = null;
+                                
                                 connectednickname.TryGetValue(socket.RemoteEndPoint.ToString(), out nickname);
                                 maintextbox.AppendText
                                 (DateTime.Now.ToString()
@@ -163,9 +175,18 @@ namespace ChatServer
                                 + root.SelectSingleNode("Receiver").InnerText
                                 + " 说: " + root.SelectSingleNode("Message").InnerText);
                                 maintextbox.AppendText(Environment.NewLine);
-
+                                
                             }));
-
+                            Socket socket1=null;
+                            string ep = "";
+                            String temp2 = root.SelectSingleNode("Receiver").InnerText;
+                            connecteds.TryGetValue(root.SelectSingleNode("Receiver").InnerText, out ep);
+                            connected.TryGetValue(ep, out socket1);
+                            XmlElement sender =xmlDocument.CreateElement("Sender");
+                            sender.InnerText = nickname;
+                            root.AppendChild(sender);
+                            Thread send = new Thread(()=>sendmessage(socket1, xmlDocument.InnerXml));
+                            send.Start();
                         }
                         else
                         {
@@ -235,6 +256,7 @@ namespace ChatServer
                 id = rd1.Next(1, Int16.MaxValue);
                 connected.Add(ClientSocket.RemoteEndPoint.ToString(), ClientSocket);
                 connectednickname.Add(ClientSocket.RemoteEndPoint.ToString(), "用户" + id.ToString());
+                connecteds.Add("用户" + id.ToString(), ClientSocket.RemoteEndPoint.ToString());
                 Thread recvt = new Thread(recvmessages);
                 recvt.IsBackground = true;
                 recvt.Start(ClientSocket);
